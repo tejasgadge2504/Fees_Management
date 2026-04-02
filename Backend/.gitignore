@@ -8,6 +8,7 @@ __pycache__/
 .venv/
 env/
 ENV/
+service_account.json
 
 # Environment variables
 .env

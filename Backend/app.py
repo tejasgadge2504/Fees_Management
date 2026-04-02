@@ -1,9 +1,18 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-
+from routes.auth import auth_bp
+from routes.standards import standards_bp
+from routes.admissions import admissions_bp
+from routes.admins import admins_bp
 # Initialize Flask App
 app = Flask(__name__)
 CORS(app)
+
+
+app.register_blueprint(auth_bp)
+app.register_blueprint(standards_bp)
+app.register_blueprint(admissions_bp)
+app.register_blueprint(admins_bp)
 
 # Home Route
 @app.route("/", methods=["GET"])
