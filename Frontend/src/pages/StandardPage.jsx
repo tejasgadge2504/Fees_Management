@@ -487,24 +487,28 @@ export default function StandardPage({ dark }) {
   // delete
   const handleDelete = async (row) => {
     if (!window.confirm(`Delete standard "${row.standard_id}"?`)) return;
+
     try {
       const res = await fetch(
-        `https://fees-management-umber.vercel.app/api/standards/${row.standard_id}`,
+        `https://fees-management-umber.vercel.app/api/standards/${row.standard_id}?sheet_url=${encodeURIComponent(sheetUrl)}`,
         {
           method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sheet_url: sheetUrl }),
         },
       );
+
       const data = await res.json();
+
       if (res.ok) {
         alert(data.message || "Deleted");
         fetchStandards();
-      } else alert(data.message || "Error");
-    } catch {
+      } else {
+        alert(data.error || "Error");
+      }
+    } catch (err) {
       alert("Server error");
     }
   };
+
 
   return (
     <>

@@ -34,7 +34,7 @@ export default function Dashboard() {
         display: "flex",
         height: "100vh",
         background: dark ? "#111827" : "#EEF2F7",
-        overflow: "hidden",
+        // ✅ REMOVED overflow: "hidden" — it was clipping the fixed side panel
         fontFamily: "'Segoe UI', sans-serif",
       }}
     >
@@ -52,8 +52,8 @@ export default function Dashboard() {
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          overflow: "hidden",
           minWidth: 0,
+          // ✅ REMOVED overflow: "hidden" here too
         }}
       >
         <TopNavbar
@@ -65,7 +65,14 @@ export default function Dashboard() {
         />
 
         {/* Page content */}
-        <main style={{ flex: 1, overflowY: "auto" }}>{renderPage()}</main>
+        <main
+          style={{
+            flex: 1,
+            overflowY: "auto", // ✅ only the content scrolls, not the whole page
+          }}
+        >
+          {renderPage()}
+        </main>
       </div>
     </div>
   );

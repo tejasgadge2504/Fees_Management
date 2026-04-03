@@ -8,7 +8,7 @@ import {
   MoonIcon,
   ChevronDownIcon,
   SignOutIcon,
-} from "./ui/Icons";
+} from "./ui/icons";
 
 // ─── Sheet Icon ───────────────────────────────────────────────────────────────
 const SheetIcon = () => (

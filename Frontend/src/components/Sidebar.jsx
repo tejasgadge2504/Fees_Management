@@ -1,4 +1,4 @@
-import { HomeIcon, ShieldIcon, UsersIcon } from "./ui/Icons";
+import { HomeIcon, ShieldIcon, UsersIcon } from "./ui/icons";
 
 const NAV = [
   {
