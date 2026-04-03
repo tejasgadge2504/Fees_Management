@@ -3,12 +3,21 @@ from pymongo import MongoClient
 import bcrypt
 import os
 from bson.objectid import ObjectId
+from dotenv import load_dotenv
+
+# Load env variables
+load_dotenv()
+
 
 auth_bp = Blueprint("auth", __name__)
 
 # MongoDB connection
 # MONGO_URI = "YOUR_MONGODB_ATLAS_CONNECTION_STRING"
-MONGO_URI = "mongodb+srv://teaminspire2226:INSPIRE%402226@cluster0.6ahzj5u.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+# MONGO_URI = "mongodb+srv://teaminspire2226:INSPIRE%402226@cluster0.6ahzj5u.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+# MongoDB connection from environment variable
+MONGO_URI = os.getenv("MONGO_URI")
+
+
 client = MongoClient(MONGO_URI)
 db = client["fees_management"]
 institutes_collection = db["institutes"]
