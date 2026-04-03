@@ -91,7 +91,7 @@ export default function Sidebar({ dark, open, activePage, setActivePage }) {
               letterSpacing: "-0.3px",
             }}
           >
-            FEE MANAGER///
+            ACADEMY FUNDS
           </span>
         )}
       </div>

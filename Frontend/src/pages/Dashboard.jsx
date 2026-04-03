@@ -65,9 +65,7 @@ export default function Dashboard() {
         />
 
         {/* Page content */}
-        <main style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
-          {renderPage()}
-        </main>
+        <main style={{ flex: 1, overflowY: "auto" }}>{renderPage()}</main>
       </div>
     </div>
   );
