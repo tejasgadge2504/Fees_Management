@@ -106,32 +106,63 @@ def get_student_admissions(student_id):
 @admissions_bp.route("/api/installments", methods=["POST"])
 def add_installment():
 
-    _, installments_sheet, error, code = get_sheets_from_request()
+    admissions_sheet, installments_sheet, error, code = get_sheets_from_request()
     if error:
         return error, code
 
     data = request.json
-
     admission_id = data.get("admission_id")
-    amount = data.get("amount")
+    amount = int(data.get("amount"))
+    received_by = data.get("received_by")
 
     if not admission_id or not amount:
         return jsonify({"error": "admission_id and amount required"}), 400
 
+    # ------------------------
+    # ADD INSTALLMENT
+    # ------------------------
     installment_id = str(uuid.uuid4())
 
     installments_sheet.append_row([
         installment_id,
         admission_id,
         amount,
+        received_by,
         datetime.utcnow().isoformat()
     ])
 
+    # ------------------------
+    # CALCULATE TOTAL PAID
+    # ------------------------
+    installments_records = installments_sheet.get_all_records()
+
+    total_paid = 0
+    for row in installments_records:
+        if row["admission_id"] == admission_id:
+            total_paid += int(row["amount"])
+
+    # ------------------------
+    # GET TOTAL FEES
+    # ------------------------
+    admissions_records = admissions_sheet.get_all_records()
+
+    for idx, row in enumerate(admissions_records, start=2):
+
+        if row["admission_id"] == admission_id:
+
+            total_fees = int(row["total_fees"])
+            balance = total_fees - total_paid
+
+            # update balance column (column 5)
+            admissions_sheet.update_cell(idx, 5, balance)
+
+            break
+
     return jsonify({
         "message": "Installment added successfully",
-        "installment_id": installment_id
+        "installment_id": installment_id,
+        "balance": balance
     })
-
 
 # -----------------------------------
 # GET INSTALLMENT HISTORY
@@ -209,3 +240,177 @@ def fees_summary(student_id):
         "remaining_fees": remaining,
         "installments_paid": installment_count
     })
+    
+    
+# -----------------------------------
+# CREATE STUDENT + ADMISSION + INSTALLMENT
+# POST /api/full-admission
+# -----------------------------------
+@admissions_bp.route("/api/full-admission", methods=["POST"])
+def full_admission():
+
+    admissions_sheet, installments_sheet, error, code = get_sheets_from_request()
+    if error:
+        return error, code
+
+    data = request.json
+    sheet_url = data.get("sheet_url")
+
+    students_sheet = get_sheet(sheet_url, "Students")
+
+    student_name = data.get("student_name")
+    mobile = data.get("mobile")
+    standard_id = data.get("standard_id")
+    fees_total = int(data.get("fees_total"))
+    amount_paid = int(data.get("amount_paid", 0))
+    received_by = data.get("received_by", "")
+
+    if not student_name or not mobile or not standard_id or not fees_total:
+        return jsonify({"error": "Missing required fields"}), 400
+
+
+    # ------------------------
+    # CHECK / CREATE STUDENT
+    # ------------------------
+    records = students_sheet.get_all_records()
+
+    student_id = None
+
+    for row in records:
+        if str(row["mobile"]) == str(mobile):
+            student_id = row["student_id"]
+            break
+
+    if not student_id:
+        student_id = str(uuid.uuid4())
+
+        students_sheet.append_row([
+            student_id,
+            student_name,
+            mobile,
+            datetime.utcnow().isoformat()
+        ])
+
+
+    # ------------------------
+    # CREATE ADMISSION
+    # ------------------------
+    admissions_records = admissions_sheet.get_all_records()
+
+    for row in admissions_records:
+        if row["student_id"] == student_id and row["standard_id"] == standard_id:
+            return jsonify({
+                "error": "Admission already exists",
+                "admission_id": row["admission_id"]
+            }), 409
+
+    admission_id = str(uuid.uuid4())
+
+    # balance initially = total fees
+    balance = fees_total
+
+    admissions_sheet.append_row([
+        admission_id,
+        student_id,
+        standard_id,
+        fees_total,
+        balance,
+        datetime.utcnow().isoformat()
+    ])
+
+
+    # ------------------------
+    # ADD INSTALLMENT
+    # ------------------------
+    if amount_paid > 0:
+
+        installment_id = str(uuid.uuid4())
+
+        installments_sheet.append_row([
+            installment_id,
+            admission_id,
+            amount_paid,
+            received_by,
+            datetime.utcnow().isoformat()
+        ])
+
+        # update balance
+        balance = fees_total - amount_paid
+
+        admissions_records = admissions_sheet.get_all_records()
+
+        for idx, row in enumerate(admissions_records, start=2):  # row index in sheet
+            if row["admission_id"] == admission_id:
+                admissions_sheet.update_cell(idx, 5, balance)  # column 5 = balance
+                break
+
+
+    return jsonify({
+        "message": "Admission completed successfully",
+        "student_id": student_id,
+        "admission_id": admission_id,
+        "balance": balance
+    })
+    
+    
+    
+# -----------------------------------
+# GET ALL ADMISSIONS
+# GET /api/admissions
+# -----------------------------------
+@admissions_bp.route("/api/admissions", methods=["GET"])
+def get_all_admissions():
+
+    admissions_sheet, _, error, code = get_sheets_from_request()
+    if error:
+        return error, code
+
+    sheet_url = request.args.get("sheet_url")
+
+    students_sheet = get_sheet(sheet_url, "Students")
+    standards_sheet = get_sheet(sheet_url, "Standard")
+
+    admissions_records = admissions_sheet.get_all_records()
+    students_records = students_sheet.get_all_records()
+    standards_records = standards_sheet.get_all_records()
+
+    # convert students into lookup dict
+    students_map = {
+        row["student_id"]: row for row in students_records
+    }
+
+    # convert standards into lookup dict
+    standards_map = {
+        row["standard_id"]: row for row in standards_records
+    }
+
+    result = []
+
+    for admission in admissions_records:
+
+        student = students_map.get(admission["student_id"], {})
+        standard = standards_map.get(admission["standard_id"], {})
+
+        result.append({
+            "admission_id": admission["admission_id"],
+            "student_id": admission["student_id"],
+            "student_name": student.get("student_name"),
+            "mobile": student.get("mobile"),
+            "student_created_at": student.get("created_at"),
+
+            "standard_id": admission["standard_id"],
+            "standard": standard.get("standard"),
+            "batch": standard.get("batch"),
+            "standard_created_at": standard.get("created_at"),
+
+            "total_fees": admission.get("total_fees"),
+            "balance": admission.get("balance"),
+            "created_at": admission.get("created_at")
+        })
+
+    return jsonify({
+        "count": len(result),
+        "data": result
+    })
+    
+    
